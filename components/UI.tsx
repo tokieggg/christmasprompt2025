@@ -55,7 +55,7 @@ export const UI: React.FC<UIProps> = ({ treeState, setTreeState, name, setName }
         </div>
 
         <footer className="text-emerald-800/50 text-[10px] tracking-[0.3em] uppercase">
-          Tom Interactive • Christmas 2024
+          Tom Interactive • Christmas 2025
         </footer>
       </div>
     </div>
