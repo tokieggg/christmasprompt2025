@@ -52,7 +52,7 @@ export const Scene: React.FC<SceneProps> = ({ treeState, name }) => {
       <Environment preset="city" />
 
       {/* Main Content Group */}
-      <Group ref={groupRef} position={[0, -2, 0]}>
+      <Group ref={groupRef} position={[0, 1, 0]}>
         <Needles count={15000} treeState={treeState} name={name} />
         <Ornaments count={300} treeState={treeState} />
       </Group>
