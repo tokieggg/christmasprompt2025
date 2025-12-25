@@ -81,7 +81,7 @@ const NeedleShaderMaterial = {
       vec3 finalColor = mix(targetBaseColor, highlightColor, sparkle * 0.5 + 0.5);
       
       float alpha = 1.0 - smoothstep(0.3, 0.5, r);
-      gl_FragColor = vec4(finalColor, alpha);
+      gl_FragColor = vec4(finalColor, alpha * 0.9);
     }
   `
 };
@@ -93,67 +93,74 @@ interface NeedlesProps {
 }
 
 export const Needles: React.FC<NeedlesProps> = ({ count, treeState, name }) => {
+  const shaderRef = useRef<THREE.ShaderMaterial>(null);
   const geometryRef = useRef<THREE.BufferGeometry>(null);
-  const shaderRef = useRef<any>(null);
+  const [font, setFont] = useState<any>(null);
 
-  const fontUrl = '/fonts/helvetiker_regular.typeface.json';
-  const [font, setFont] = useState<THREE.Font | null>(null);
-
+  // Load font once
   useEffect(() => {
     const loader = new FontLoader();
-    loader.load(fontUrl, (loadedFont) => {
+    loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (loadedFont) => {
       setFont(loadedFont);
     });
   }, []);
-
-  // Tree positions (conical shape)
+  
+  // Base Geometry Data (Tree & Random)
   const { positions, treePositions, randoms, initialScatter } = useMemo(() => {
     const pos = new Float32Array(count * 3);
-    const treePos = new Float32Array(count * 3);
-    const rand = new Float32Array(count);
-    const initScatter = new Float32Array(count * 3);
+    const tree = new Float32Array(count * 3);
+    const scatter = new Float32Array(count * 3);
+    const rnd = new Float32Array(count);
 
-    const treeHeight = 11;
-    const treeRadiusBase = 3.5;
+    const treeHeight = 12;
+    const treeRadiusBase = 4;
 
     for (let i = 0; i < count; i++) {
-      const t = i / count;
-      const angle = t * Math.PI * 2 * 12 + (i % 10);
-      const y = (t - 0.5) * treeHeight * 1.2;
-      const radius = (1 - t) * treeRadiusBase;
+      rnd[i] = Math.random();
 
-      // Tree position
-      treePos[i * 3] = radius * Math.cos(angle);
-      treePos[i * 3 + 1] = y;
-      treePos[i * 3 + 2] = radius * Math.sin(angle);
+      // Tree Position
+      const yNorm = Math.random();
+      const y = (yNorm - 0.5) * treeHeight;
+      const radiusAtY = (1 - yNorm) * treeRadiusBase;
+      const angle = Math.random() * Math.PI * 2;
+      const radiusNoise = (Math.random() - 0.5) * 0.5;
 
-      // Initial scatter (wide cloud)
-      initScatter[i * 3] = (Math.random() - 0.5) * 30;
-      initScatter[i * 3 + 1] = (Math.random() - 0.5) * 12;
-      initScatter[i * 3 + 2] = (Math.random() - 0.5) * 8;
+      tree[i * 3] = (radiusAtY + radiusNoise) * Math.cos(angle);
+      tree[i * 3 + 1] = y;
+      tree[i * 3 + 2] = (radiusAtY + radiusNoise) * Math.sin(angle);
 
-      // Base position (same as tree for smooth start)
-      pos[i * 3] = treePos[i * 3];
-      pos[i * 3 + 1] = treePos[i * 3 + 1];
-      pos[i * 3 + 2] = treePos[i * 3 + 2];
+      // Initial Scatter (Sphere) - default fallback
+      const r = 20 * Math.cbrt(Math.random());
+      const theta = Math.random() * 2 * Math.PI;
+      const phi = Math.acos(2 * Math.random() - 1);
+      
+      scatter[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      scatter[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      scatter[i * 3 + 2] = r * Math.cos(phi);
 
-      rand[i] = Math.random();
+      pos[i * 3] = scatter[i * 3];
+      pos[i * 3 + 1] = scatter[i * 3 + 1];
+      pos[i * 3 + 2] = scatter[i * 3 + 2];
     }
 
-    return { positions: pos, treePositions: treePos, randoms: rand, initialScatter: initScatter };
+    return {
+      positions: pos,
+      treePositions: tree,
+      randoms: rnd,
+      initialScatter: scatter
+    };
   }, [count]);
 
-  // Update scatter positions based on name text
+  // Recalculate scatter positions based on Text whenever name or font changes
   useEffect(() => {
-    if (!font || !geometryRef.current || !name.trim()) return;
+    if (!font || !geometryRef.current) return;
 
-    const lines = name.toUpperCase().split('\n');
-    if (lines.length === 0 || !lines[0]) return;
+    // Split lines
+    const lines = ['Merry', 'Christmas'];
+    if (name.trim()) lines.push(name.trim());
 
     const geometries: THREE.BufferGeometry[] = [];
-
-    // Adjusted size for better readability on mobile/desktop
-    const size = 2.5; // Reduced size for mobile fit
+    const size = 1.5; // Reduced size for mobile fit
     const lineHeight = size * 1.5;
 
     lines.forEach((line, i) => {
