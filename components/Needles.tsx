@@ -160,7 +160,7 @@ export const Needles: React.FC<NeedlesProps> = ({ count, treeState, name }) => {
         const geo = new TextGeometry(line, {
             font: font,
             size: size,
-            depth: 0,  // ← CHANGED: Was 0.2 → now 0 for thin, clear letters
+            depth: 0.2,  // ← ROLLED BACK: Original thicker depth
             curveSegments: 12,
             bevelEnabled: true,
             bevelThickness: 0.1,
